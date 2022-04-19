@@ -1,80 +1,80 @@
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
 import ru.netology.entity.Country;
 import ru.netology.entity.Location;
 import ru.netology.geo.GeoService;
-import ru.netology.geo.GeoServiceImpl;
 import ru.netology.i18n.LocalizationService;
-import ru.netology.i18n.LocalizationServiceImpl;
 import ru.netology.sender.MessageSender;
 import ru.netology.sender.MessageSenderImpl;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Stream;
 
-import static ru.netology.entity.Country.RUSSIA;
-import static ru.netology.entity.Country.USA;
-import static ru.netology.geo.GeoServiceImpl.*;
+import static org.mockito.ArgumentMatchers.*;
 
 public class MessageSenderImplTest {
 
-    static GeoService geoService;
-    static LocalizationService localizationService;
-    static MessageSender messageSender;
-
     @BeforeAll
-    public static void initSuite() {
-        // GeoService mock
-        geoService = Mockito.mock(GeoServiceImpl.class);
+    public static void start() {
+        System.out.println("Class 'MessageSenderImpl' tests start");
+    }
 
-        Mockito.when(geoService.byIp(LOCALHOST)).thenReturn(new Location(null, null, null, 0));
-        Mockito.when(geoService.byIp(MOSCOW_IP)).thenReturn(new Location("Moscow", RUSSIA, "Lenina", 15));
-        Mockito.when(geoService.byIp(NEW_YORK_IP)).thenReturn(new Location("New York", USA, " 10th Avenue", 32));
-        Mockito.when(geoService.byIp(Mockito.startsWith("172."))).thenReturn(new Location("Moscow", Country.RUSSIA, null, 0));
-        Mockito.when(geoService.byIp(Mockito.startsWith("96."))).thenReturn(new Location("New York", Country.USA, null, 0));
-
-        Mockito.when(geoService.byCoordinates(Mockito.anyDouble(), Mockito.anyDouble())).thenThrow(new RuntimeException("Not implemented"));
-
-        // LocalizationService mock
-        localizationService = Mockito.mock(LocalizationServiceImpl.class);
-
-        Mockito.when(localizationService.locale(RUSSIA)).thenReturn("Добро пожаловать");
-        Mockito.when(localizationService.locale(USA)).thenReturn("Welcome");
-
-        // MessageSender mock
-        messageSender = new MessageSenderImpl(geoService, localizationService);
+    @BeforeEach
+    public void startTest() {
     }
 
     @AfterAll
-    public static void completeSuite() {
-        System.out.println("All tests for methods of class 'MessageSenderImpl' complete!");
+    public static void finish() {
+        System.out.println("Class 'MessageSenderImpl' tests finish");
     }
 
-    @Test
-    @DisplayName("Test send() for RUSSIA ip")
-    public void sendRussiaIpTest(TestInfo sendRussiaIpTestInfo) {
+    @AfterEach
+    public void finishTest() {
+    }
+
+    @ParameterizedTest
+    @MethodSource("source")
+    void sendTest(String text, String ip) {
+
+        GeoService geoService = Mockito.mock(GeoService.class);
+        LocalizationService localizationService = Mockito.mock(LocalizationService.class);
+
+        Mockito.when(geoService.byIp(Mockito.any()))
+                .thenReturn(new Location(null, Country.USA, null, 0));
+        Mockito.when(geoService.byIp(startsWith("172.")))
+                .thenReturn(new Location(null, Country.RUSSIA, null, 0));
+
+        Mockito.when(localizationService.locale(Mockito.any()))
+                .thenReturn("Welcome");
+        Mockito.when(localizationService.locale(Country.RUSSIA))
+                .thenReturn("Добро пожаловать");
+
+        MessageSender sut = new MessageSenderImpl(geoService, localizationService);
 
         Map<String, String> headers = new HashMap<>();
+        headers.put(MessageSenderImpl.IP_ADDRESS_HEADER, ip);
 
-        headers.put(MessageSenderImpl.IP_ADDRESS_HEADER, "172.123.12.19");
+        String actual = sut.send(headers);
 
-        Assertions.assertEquals("Добро пожаловать", messageSender.send(headers),
-                sendRussiaIpTestInfo.getDisplayName() + "is NO complete!");
-
-        System.out.println("\n" + sendRussiaIpTestInfo.getDisplayName() + " complete!");
+        Assertions.assertEquals(text, actual);
+        System.out.println(" = " + text + " (MessageSender test " + ip + " is OK...)");
     }
 
-    @Test
-    @DisplayName("Test send() for USA ip")
-    public void sendUsaIpTest(TestInfo sendUsaIpTestInfo) {
-
-        Map<String, String> headers = new HashMap<>();
-
-        headers.put(MessageSenderImpl.IP_ADDRESS_HEADER, "96.44.183.149");
-
-        Assertions.assertEquals("Welcome", messageSender.send(headers),
-                sendUsaIpTestInfo.getDisplayName() + " is NO complete!");
-
-        System.out.println("\n" + sendUsaIpTestInfo.getDisplayName() + " complete!");
+    private static Stream<Arguments> source() {
+        String rusText = "Добро пожаловать";
+        String engText = "Welcome";
+        return Stream.of(Arguments.of(rusText, "172.1.1.1"),
+                Arguments.of(rusText, "172.2.2.2"),
+                Arguments.of(engText, "1.1.1.1"),
+                Arguments.of(engText, "2.2.2.2"),
+                Arguments.of(engText, "127.1.1.1"),
+                Arguments.of(engText, "255.1.1.1"),
+                Arguments.of(engText, "96.1.1.1"),
+                Arguments.of(engText, "96.2.2.2"));
     }
+
 }

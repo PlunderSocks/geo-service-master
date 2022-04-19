@@ -1,44 +1,49 @@
 import org.junit.jupiter.api.*;
-import org.mockito.Mockito;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import ru.netology.entity.Country;
 import ru.netology.i18n.LocalizationService;
 import ru.netology.i18n.LocalizationServiceImpl;
 
-import static ru.netology.entity.Country.RUSSIA;
-import static ru.netology.entity.Country.USA;
+import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class LocalizationServiceImplTest {
 
-    static LocalizationService localizationService;
-
     @BeforeAll
-    public static void initSuite() {
+    public static void start() {
+        System.out.println("Class 'LocalizationServiceImplTest' tests start");
+    }
 
-        localizationService = Mockito.mock(LocalizationServiceImpl.class);
-
-        Mockito.when(localizationService.locale(RUSSIA)).thenReturn("Добро пожаловать");
-        Mockito.when(localizationService.locale(USA)).thenReturn("Welcome");
-
-        System.out.println("Start tests for methods of class 'LocalizationServiceImpl'");
+    @BeforeEach
+    public void startTest() {
     }
 
     @AfterAll
-    public static void completeSuite() {
-        System.out.println("All tests for methods of class 'LocalizationServiceImpl' complete!");
+    public static void finish() {
+        System.out.println("Class 'LocalizationServiceImplTest' tests finish");
     }
 
-    @Test
-    @DisplayName("Test locale() for RUSSIA")
-    public void localeRussiaTest(TestInfo localeTestInfo) {
-        Assertions.assertEquals(localizationService.locale(RUSSIA), "Добро пожаловать",
-                localeTestInfo.getDisplayName() + " is NO complete !");
-        System.out.println(localeTestInfo.getDisplayName() + " complete !");
+    @AfterEach
+    public void finishTest() {
     }
 
-    @Test
-    @DisplayName("Test locale() for USA")
-    public void localeUsaTest(TestInfo localeTestInfo) {
-        Assertions.assertEquals(localizationService.locale(USA), "Welcome",
-                localeTestInfo.getDisplayName() + " is NO complete !");
-        System.out.println(localeTestInfo.getDisplayName() + " complete !");
+    @ParameterizedTest
+    @MethodSource("country")
+    void localeTest(String text, Country country) {
+        LocalizationService sut = new LocalizationServiceImpl();
+        String actual = sut.locale(country);
+        assertEquals(text, actual);
+        System.out.println("Locale test is OK... (" + text + ", " + actual + ")");
     }
+
+    private static Stream<Arguments> country() {
+        return Stream.of(Arguments.of("Welcome", Country.USA),
+                Arguments.of("Welcome", Country.BRAZIL),
+                Arguments.of("Добро пожаловать", Country.RUSSIA),
+                Arguments.of("Welcome", Country.GERMANY));
+    }
+
 }
